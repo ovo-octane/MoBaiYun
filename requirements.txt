@@ -1,0 +1,12 @@
+﻿# 墨白云 (Mobaiyun) Web 应用依赖
+# Python 3.8+
+
+python-dotenv>=1.0.0
+flask>=2.0.0
+flask-login>=0.6.0
+flask-socketio>=5.0.0
+openai>=1.0.0
+azure-cognitiveservices-speech>=1.0.0
+werkzeug>=2.0.0
+gunicorn>=20.0.0
+eventlet>=0.33.0

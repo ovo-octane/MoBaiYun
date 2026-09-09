@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>墨白云AI对话</title>
+    <link href="{{ url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet">
+    <script src="{{ url_for('static', filename='socket.io.min.js') }}"></script>
+    <style>
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f0f0f;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #252525;
+            --bg-card: #2d2d2d;
+            --bg-hover: #3a3a3a;
+            --border-color: #333333;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --text-muted: #666666;
+            --accent-primary: #667eea;
+            --accent-secondary: #764ba2;
+            --accent-hover: #7c3aed;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            line-height: 1.6;
+        }
+
+        /* 背景动画圆圈 */
+        .background-circles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            50% { transform: translateY(-20px) translateX(20px); }
+        }
+
+        /* 左侧控制面板 */
+        .control-panel {
+            width: 380px;
+            background: rgba(26, 26, 26, 0.8);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .section {
+            background: rgba(45, 45, 45, 0.6);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+        }
+
+        .section:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--accent-primary);
+        }
+
+        .section h3 {
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section h3::before {
+            content: '';
+            width: 4px;
+            height: 16px;
+            background: var(--accent-primary);
+            border-radius: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            background: var(--bg-hover);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, var(--accent-hover), var(--accent-primary));
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-small {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-small:hover {
+            background: var(--accent-hover);
+            transform: scale(1.1);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* 右侧聊天区域 */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(15, 15, 15, 0.7);
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .chat-header {
+            background: rgba(26, 26, 26, 0.9);
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-button {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .back-button:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .chat-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .control-select {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .control-select:hover {
+            border-color: var(--accent-primary);
+            background: var(--bg-hover);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: rgba(15, 15, 15, 0.5);
+            position: relative;
+        }
+
+        .chat-messages::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: linear-gradient(180deg, rgba(15, 15, 15, 0.9) 0%, transparent 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .message {
+            max-width: 65%;
+            padding: 16px 20px;
+            border-radius: var(--radius-lg);
+            word-wrap: break-word;
+            position: relative;
+            animation: messageSlide 0.3s ease-out;
+            box-shadow: var(--shadow-sm);
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            border-bottom-right-radius: var(--radius-sm);
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: rgba(45, 45, 45, 0.6);
+            border: 1px solid var(--border-color);
+            border-bottom-left-radius: var(--radius-sm);
+        }
+
+        .message.system {
+            align-self: center;
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: var(--warning);
+            font-style: italic;
+            max-width: 80%;
+        }
+
+        .message-header {
+            font-size: 13px;
+            color: #ffffff;
+            margin-bottom: 8px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+        }
+
+        .message.user .message-header {
+            color: #ffffff;
+            opacity: 1;
+        }
+
+        .message-content {
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        .message.assistant .message-content {
+            color: var(--text-primary);
+        }
+
+        .chat-input-container {
+            padding: 24px;
+            background: rgba(26, 26, 26, 0.9);
+            border-top: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 16px;
+            align-items: flex-end;
+        }
+
+        .chat-input textarea {
+            flex: 1;
+            padding: 16px 20px;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+            font-size: 15px;
+            font-family: inherit;
+            resize: none;
+            min-height: 56px;
+            max-height: 200px;
+            transition: all 0.3s ease;
+        }
+
+        .chat-input textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            background: var(--bg-hover);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .send-button {
+            padding: 16px 24px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 80px;
+        }
+
+        .send-button:hover {
+            background: linear-gradient(135deg, var(--accent-hover), var(--accent-primary));
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* 角色列表 */
+        .role-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+
+        .role-item {
+            background: rgba(45, 45, 45, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            transition: all 0.3s ease;
+        }
+
+        .role-item:hover {
+            background: rgba(58, 58, 58, 0.4);
+            border-color: var(--accent-primary);
+        }
+
+        .role-info {
+            flex: 1;
+        }
+
+        .role-name {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .role-preview {
+            color: var(--text-primary);
+            font-size: 12px;
+            line-height: 1.4;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .role-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: 12px;
+        }
+
+        /* 自定义滚动条 */
+        .role-list::-webkit-scrollbar,
+        .chat-messages::-webkit-scrollbar,
+        .control-panel-content::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .role-list::-webkit-scrollbar-track,
+        .chat-messages::-webkit-scrollbar-track,
+        .control-panel-content::-webkit-scrollbar-track {
+            background: rgba(45, 45, 45, 0.3);
+            border-radius: 4px;
+        }
+
+        .role-list::-webkit-scrollbar-thumb,
+        .chat-messages::-webkit-scrollbar-thumb,
+        .control-panel-content::-webkit-scrollbar-thumb {
+            background: var(--accent-primary);
+            border-radius: 4px;
+        }
+
+        .role-list::-webkit-scrollbar-thumb:hover,
+        .chat-messages::-webkit-scrollbar-thumb:hover,
+        .control-panel-content::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-hover);
+        }
+
+        /* TTS设置 */
+        .tts-toggle-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            transition: all 0.3s ease;
+        }
+
+        .tts-toggle-group label {
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .tts-toggle-group:hover {
+            border-color: var(--accent-primary);
+            background: var(--bg-hover);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+        }
+
+        .toggle-btn {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 6px;
+        }
+
+        .toggle-btn.toggle-on {
+            background: linear-gradient(135deg, var(--success), #0ea271);
+        }
+
+        .toggle-btn.toggle-off {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+        }
+
+        .toggle-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            z-index: 2;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-btn.toggle-on .toggle-text {
+            transform: translateX(0);
+        }
+
+        .toggle-btn.toggle-off .toggle-text {
+            transform: translateX(20px);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s ease;
+            z-index: 1;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .toggle-btn.toggle-on .toggle-slider {
+            left: calc(100% - 27px);
+        }
+
+        .toggle-btn.toggle-off .toggle-slider {
+            left: 3px;
+        }
+
+        .tts-group {
+            margin-bottom: 12px;
+        }
+
+        .tts-group select {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            padding: 12px 16px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .tts-group select:hover {
+            border-color: var(--accent-primary);
+            background: var(--bg-hover);
+        }
+
+        .tts-group select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            background: var(--bg-hover);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .tts-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .tts-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .range-value {
+            display: inline-block;
+            width: 40px;
+            text-align: center;
+            color: var(--accent-primary);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* 备案信息 */
+        .icp-info {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .icp-info a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-size: 12px;
+            transition: color 0.3s ease;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        /* 移动端折叠面板 */
+        .mobile-toggle-header {
+            display: none;
+        }
+        
+        .mobile-toggle-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .mobile-chat-title {
+            font-size: 15px;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .mobile-role-select {
+            display: none;
+            flex: 1;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 14px;
+            padding: 5px 8px;
+            max-width: 160px;
+        }
+
+        .mobile-logout-btn {
+            display: none;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            padding: 4px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            white-space: nowrap;
+        }
+
+        .mobile-toggle-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(102, 126, 234, 0.15);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 13px;
+            padding: 6px 14px;
+            cursor: pointer;
+        }
+
+        .toggle-icon {
+            font-size: 14px;
+        }
+
+        .control-panel-content {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                height: 100vh;
+                height: 100dvh;
+            }
+
+            .mobile-role-select {
+                display: inline-block;
+            }
+
+            .mobile-logout-btn {
+                display: inline;
+            }
+
+            .mobile-toggle-btn .toggle-label {
+                display: none;
+            }
+
+            .mobile-toggle-header {
+                display: flex;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 1001;
+                padding: 10px 16px;
+                background: rgba(26, 26, 26, 0.95);
+                backdrop-filter: blur(10px);
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .control-panel {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 1000;
+                background: rgba(15, 15, 15, 0.98);
+                backdrop-filter: blur(20px);
+                overflow-y: auto;
+                padding: 60px 16px 16px;
+                display: none;
+            }
+
+            .control-panel.expanded {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .chat-container {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                padding-top: 46px;
+            }
+
+            .chat-header {
+                display: none;
+            }
+
+            .chat-messages {
+                flex: 1;
+                min-height: 0;
+                padding: 12px 16px;
+                gap: 12px;
+            }
+
+            .chat-input-container {
+                padding: 12px 16px;
+            }
+
+            .chat-input textarea {
+                font-size: 15px;
+            }
+
+            .message {
+                max-width: 85%;
+                padding: 12px 16px;
+                font-size: 14px;
+            }
+
+            .message.user {
+                max-width: 80%;
+            }
+
+            .message.assistant {
+                max-width: 90%;
+            }
+
+            .control-panel .section {
+                padding: 14px;
+            }
+
+            .control-panel .section h3 {
+                font-size: 14px;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+
+</head>
+<body>
+    <div class="background-circles">
+        <div class="circle" style="width: 200px; height: 200px; top: 10%; left: 5%; animation-delay: 0s;"></div>
+        <div class="circle" style="width: 150px; height: 150px; top: 60%; left: 80%; animation-delay: 1s;"></div>
+        <div class="circle" style="width: 100px; height: 100px; top: 20%; left: 90%; animation-delay: 2s;"></div>
+        <div class="circle" style="width: 120px; height: 120px; top: 80%; left: 10%; animation-delay: 3s;"></div>
+        <div class="circle" style="width: 180px; height: 180px; top: 40%; left: 70%; animation-delay: 4s;"></div>
+    </div>
+
+    <!-- 左侧控制面板 -->
+    <div class="control-panel">
+        <div class="control-panel-content" id="control-panel-content">
+        <!-- 角色管理 -->
+        <div class="section">
+            <h3>角色管理</h3>
+            <div class="role-list" id="role-panel">
+                {% for role_name, prompt in roles.items() %}
+                <div class="role-item" data-role-name="{{ role_name }}">
+                    <div class="role-info">
+                        <div class="role-name">{{ role_name }}</div>
+                        <div class="role-preview">{{ prompt[:80] }}{% if prompt|length > 80 %}...{% endif %}</div>
+                    </div>
+                    <div class="role-actions">
+                        <button class="btn-small edit-role" data-role-name="{{ role_name }}" data-prompt="{{ prompt }}">✏️</button>
+                        <button class="btn-small delete-role" data-role-name="{{ role_name }}">🗑️</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <button class="btn" id="add-role-btn" data-bs-toggle="modal" data-bs-target="#addRoleModal">添加角色</button>
+        </div>
+
+{% if has_tts %}
+        <!-- TTS语音设置 -->
+        <div class="section">
+            <h3>TTS语音设置</h3>
+            <div class="tts-toggle-group">
+                <label for="tts-enable">启用语音合成</label>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="tts-enable" checked style="display: none;">
+                    <button type="button" class="toggle-btn toggle-on" id="tts-toggle-btn" data-state="on">
+                        <span class="toggle-text">开启</span>
+                        <span class="toggle-slider"></span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="tts-group">
+                <div class="form-group">
+                    <label for="tts-language">语言/方言</label>
+                    <select id="tts-language">
+                        <optgroup label="标准普通话">
+                            <option value="zh-CN">中文 (简体) - 标准普通话</option>
+                        </optgroup>
+                        <optgroup label="中文方言">
+                            <option value="zh-CN-sichuan">中文 - 西南官话 (四川)</option>
+                            <option value="zh-CN-shandong">中文 - 冀鲁官话 (山东)</option>
+                            <option value="zh-CN-henan">中文 - 中原官话 (河南)</option>
+                            <option value="zh-CN-liaoning">中文 - 东北话 (辽宁)</option>
+                            <option value="zh-CN-shaanxi">中文 - 中原官话 (陕西)</option>
+                        </optgroup>
+                        <optgroup label="其他语言">
+                            <option value="en-US">英语 (美国)</option>
+                            <option value="ja-JP">日语</option>
+                            <option value="ko-KR">韩语</option>
+                            <option value="de-DE">德语</option>
+                            <option value="fr-FR">法语</option>
+                            <option value="es-ES">西班牙语</option>
+                        </optgroup>
+                            <option value="zh-CN-guangxi">中文 - 广西口音</option>
+                        </optgroup>
+
+                    </select>
+                </div>
+            </div>
+
+            <div class="tts-row">
+                <div class="form-group">
+                    <label for="tts-voice">语音 (音色)</label>
+                    <select id="tts-voice">
+                        <option value="zh-CN-XiaoxiaoNeural">晓晓 (女声)</option>
+                        <option value="zh-CN-YunxiNeural">云希 (男声)</option>
+                        <option value="zh-CN-YunjianNeural">云健 (男声)</option>
+                        <option value="zh-CN-XiaoyiNeural">晓伊 (女声)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tts-style">说话风格</label>
+                    <select id="tts-style">
+                        <option value="general">通用</option>
+                        <option value="calm">平静</option>
+                        <option value="cheerful">欢快</option>
+                        <option value="sad">悲伤</option>
+                        <option value="angry">生气</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="tts-row">
+                <div class="form-group">
+                    <label for="tts-role">角色扮演</label>
+                    <select id="tts-role">
+                        <option value="">无 (默认)</option>
+                        <option value="Narrator">旁白</option>
+                        <option value="Girl">女孩</option>
+                        <option value="Boy">男孩</option>
+                        <option value="SeniorFemale">年长女性</option>
+                        <option value="SeniorMale">年长男性</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="tts-row">
+                <div class="form-group">
+                    <label for="tts-rate">
+                        语速 <span class="range-value" id="tts-rate-value">1.0</span>x
+                    </label>
+                    <input type="range" id="tts-rate" min="0.5" max="2.0" step="0.1" value="1.0">
+                </div>
+                <div class="form-group">
+                    <label for="tts-pitch">语调</label>
+                    <select id="tts-pitch">
+                        <option value="default">默认</option>
+                        <option value="x-low">极低</option>
+                        <option value="low">低</option>
+                        <option value="medium">中</option>
+                        <option value="high">高</option>
+                        <option value="x-high">极高</option>
+                    </select>
+                </div>
+
+        {% endif %}            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- 右侧聊天区域 -->
+    <div class="mobile-toggle-header" id="mobile-toggle-header">
+        <div class="mobile-toggle-inner">
+            <button class="mobile-toggle-btn" id="mobile-toggle-btn">
+                <span class="toggle-icon">⚙</span>
+            </button>
+            <select id="mobile-role-select" class="mobile-role-select">
+                {% for role_name in roles %}
+                <option value="{{ role_name }}" {% if role_name == current_role %}selected{% endif %}>{{ role_name }}</option>
+                {% endfor %}
+            </select>
+            <a href="{{ url_for('logout') }}" class="mobile-logout-btn">登出</a>
+        </div>
+    </div>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="chat-title">墨白云AI对话</div>
+            <div class="control-buttons">
+                <select id="role-select" class="control-select">
+                    {% for role_name in roles %}
+                    <option value="{{ role_name }}" {% if role_name == current_role %}selected{% endif %}>{{ role_name }}</option>
+                    {% endfor %}
+                </select>
+                <select id="ai-select" class="control-select">
+                    <option value="deepseek" selected>deepseek</option>
+                </select>
+                <a href="{{ url_for('logout') }}" class="back-button">登出</a>
+
+            </div>
+        </div>
+
+        <div class="chat-messages" id="history">
+            {% for msg in history %}
+            <div class="message {{ msg.role }}" data-role="{{ msg.role }}">
+                <div class="message-header">
+                    {{ '我' if msg.role == 'user' else (current_role if msg.role == 'assistant' and current_role else '助手') }}
+                </div>
+                <div class="message-content">{{ msg.content }}</div>
+                {% if msg.role == 'assistant' and msg.get('audio_url') %}
+                <audio controls class="mt-1" src="{{ msg.audio_url }}" preload="metadata" style="margin-top: 8px;"></audio>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="chat-input-container">
+            <div class="chat-input">
+                <textarea id="message-input" placeholder="输入消息后发送..." rows="1"></textarea>
+                <button class="send-button" id="send-btn">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加角色模态框 (Bootstrap) -->
+    <div class="modal fade" id="addRoleModal" tabindex="-1" aria-labelledby="addRoleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+                <div class="modal-header" style="border-bottom-color: var(--border-color);">
+                    <h5 class="modal-title" id="addRoleModalLabel" style="color: var(--text-primary);">添加角色</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1);"></button>
+                </div>
+                <div class="modal-body" style="color: var(--text-secondary);">
+                    <form id="addRoleForm">
+                        <div class="mb-3">
+                            <label for="role-name" class="form-label" style="color: var(--text-secondary);">角色名称</label>
+                            <input type="text" class="form-control" id="role-name" required style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">
+                        </div>
+                        <div class="mb-3">
+                            <label for="role-prompt" class="form-label" style="color: var(--text-secondary);">角色设定 (Prompt)</label>
+                            <textarea class="form-control" id="role-prompt" rows="4" placeholder="输入角色设定..." style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer" style="border-top-color: var(--border-color);">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">取消</button>
+                    <button type="button" class="btn btn-primary" id="save-role-btn" style="background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); border: none;">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑角色模态框 (Bootstrap) -->
+    <div class="modal fade" id="editRoleModal" tabindex="-1" aria-labelledby="editRoleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+                <div class="modal-header" style="border-bottom-color: var(--border-color);">
+                    <h5 class="modal-title" id="editRoleModalLabel" style="color: var(--text-primary);">编辑角色</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1);"></button>
+                </div>
+                <div class="modal-body" style="color: var(--text-secondary);">
+                    <form id="editRoleForm">
+                        <div class="mb-3">
+                            <label for="edit-role-name" class="form-label" style="color: var(--text-secondary);">角色名称</label>
+                            <input type="text" class="form-control" id="edit-role-name" readonly style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-role-prompt" class="form-label" style="color: var(--text-secondary);">角色设定 (Prompt)</label>
+                            <textarea class="form-control" id="edit-role-prompt" rows="4" placeholder="输入角色设定..." style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer" style="border-top-color: var(--border-color);">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">取消</button>
+                    <button type="button" class="btn btn-primary" id="update-role-btn" style="background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); border: none;">更新</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.initialRoles = {{ roles|tojson }};
+        window.currentRole = "{{ current_role }}";
+        window.currentAI = "{{ current_ai }}";
+    </script>
+    <script>
+        // TTS切换按钮交互
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleBtn = document.getElementById('tts-toggle-btn');
+            const checkbox = document.getElementById('tts-enable');
+            
+            if (toggleBtn && checkbox) {
+                // 初始化状态
+                function updateToggleState() {
+                    if (checkbox.checked) {
+                        toggleBtn.classList.remove('toggle-off');
+                        toggleBtn.classList.add('toggle-on');
+                        toggleBtn.setAttribute('data-state', 'on');
+                        toggleBtn.querySelector('.toggle-text').textContent = '开启';
+                    } else {
+                        toggleBtn.classList.remove('toggle-on');
+                        toggleBtn.classList.add('toggle-off');
+                        toggleBtn.setAttribute('data-state', 'off');
+                        toggleBtn.querySelector('.toggle-text').textContent = '关闭';
+                    }
+                }
+                
+                // 初始更新
+                updateToggleState();
+                
+                // 按钮点击事件
+                toggleBtn.addEventListener('click', function() {
+                    checkbox.checked = !checkbox.checked;
+                    updateToggleState();
+                    // 触发change事件以便其他监听器可以响应
+                    checkbox.dispatchEvent(new Event('change'));
+                });
+                
+                // 确保checkbox变化时也更新按钮
+                checkbox.addEventListener('change', updateToggleState);
+            }
+            
+            // 移动端控制面板折叠/展开
+            const mobileToggleBtn = document.getElementById('mobile-toggle-btn');
+            const controlPanel = document.querySelector('.control-panel');
+            const mobileToggleHeader = document.getElementById('mobile-toggle-header');
+            const toggleIcon = document.querySelector('.toggle-icon');
+            
+            if (mobileToggleBtn && controlPanel) {
+                mobileToggleBtn.addEventListener('click', function() {
+                    var isExpand = controlPanel.classList.toggle('expanded');
+                    if (toggleIcon) toggleIcon.textContent = isExpand ? '✕' : '⚙';
+                });
+                
+                // 点击遮罩关闭
+                controlPanel.addEventListener('click', function(e) {
+                    if (e.target === controlPanel) {
+                        controlPanel.classList.remove('expanded');
+                        if (toggleIcon) toggleIcon.textContent = '⚙';
+                    }
+                });
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>

@@ -1,0 +1,17 @@
+﻿venv/
+__pycache__/
+*.pyc
+.env
+users.db
+static/audio_*.mp3
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# 系统文件
+Thumbs.db
+.DS_Store

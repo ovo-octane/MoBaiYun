@@ -1,0 +1,117 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>墨白云管理后台</title>
+    <link href="{{ url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            color: #fff;
+            min-height: 100vh; padding: 40px 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 30px; padding-bottom: 20px;
+            border-bottom: 1px solid #333;
+        }
+        .header h1 {
+            font-size: 24px; font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .logout-btn {
+            color: #b0b0b0; text-decoration: none; font-size: 14px;
+            padding: 8px 16px; border: 1px solid #333; border-radius: 8px;
+        }
+        .logout-btn:hover { color: #fff; border-color: #667eea; }
+        .stats { color: #b0b0b0; font-size: 14px; margin-bottom: 24px; }
+        table {
+            width: 100%; border-collapse: collapse; background: rgba(26,26,26,0.8);
+            border-radius: 12px; overflow: hidden;
+        }
+        th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #333; }
+        th { color: #b0b0b0; font-weight: 500; font-size: 13px; background: rgba(37,37,37,0.6); }
+        td { font-size: 14px; }
+        .toggle-form { display: inline; }
+        .toggle-btn {
+            background: #333; color: #666; border: none;
+            padding: 5px 14px; border-radius: 12px; cursor: pointer; font-size: 12px;
+            transition: all 0.2s;
+        }
+        .toggle-btn.on { background: #10b981; color: #fff; }
+        .delete-btn {
+            background: none; border: 1px solid #ef4444; color: #ef4444;
+            padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;
+            margin-left: 8px;
+        }
+        .delete-btn:hover { background: #ef4444; color: #fff; }
+        .delete-btn:disabled { border-color: #333; color: #444; cursor: not-allowed; }
+        .protect-tag { font-size: 10px; color: #f59e0b; margin-left: 6px; }
+        @media (max-width: 768px) {
+            body { padding: 20px 12px; }
+            th:nth-child(4), td:nth-child(4),
+            th:nth-child(5), td:nth-child(5) { display: none; }
+            th, td { padding: 8px 6px; font-size: 12px; }
+            .delete-btn { padding: 4px 8px; font-size: 11px; margin-left: 4px; }
+            .toggle-btn { padding: 4px 10px; font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>墨白云管理后台</h1>
+            <a href="{{ url_for('logout') }}" class="logout-btn">登出</a>
+        </div>
+        <div class="stats">
+            共 {{ users|length }} 个账号
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>TTS</th>
+                    <th>角色数</th>
+                    <th>对话数</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users if u.username != 'Dawnlarism' %}
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td>
+                        {{ u.username }}
+                        {% if u.username in ('Dawnlarism', 'DAWN') %}<span class="protect-tag">🔒</span>{% endif %}
+                    </td>
+                    <td>
+                        <form method="post" action="{{ url_for('admin_toggle_tts', user_id=u.id) }}" class="toggle-form">
+                            <button type="submit" class="toggle-btn {{ 'on' if u.has_tts else '' }}">
+                                {{ '开启' if u.has_tts else '关闭' }}
+                            </button>
+                        </form>
+                    </td>
+                    <td>{{ u.roles }}</td>
+                    <td>{{ u.history }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}" style="display:inline;">
+                            <button type="submit" class="delete-btn"
+                                    {% if u.username in ('Dawnlarism', 'DAWN') %}disabled{% endif %}
+                                    {% if u.username not in ('Dawnlarism', 'DAWN') %}onclick="return confirm('确定删除账号 {{ u.username }}？')"{% endif %}>
+                                删除
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
