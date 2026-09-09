@@ -1,4 +1,4 @@
-﻿# 墨白云 (MoBaiYun)
+﻿# 墨白云 (MoBaiYun) AI编写
 
 基于 Flask + Socket.IO 的中文 AI 角色扮演对话 Web 应用。
 
