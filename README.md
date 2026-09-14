@@ -54,6 +54,5 @@ mobaiyun/
 
 ## 安全提示
 
-- `.env` 已被 `.gitignore` 排除，请勿将真实 API Key 提交到仓库
 - 生产环境务必设置强 `FLASK_SECRET_KEY`（通过环境变量或 `.env`）
 - 首次部署后请修改默认账号密码
